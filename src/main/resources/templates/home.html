@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Trang chủ</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      padding-top: 70px;
+    }
+  </style>
+</head>
+<body class="bg-light">
+
+<!-- HEADER CỐ ĐỊNH -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top px-4">
+  <a class="navbar-brand" href="#">
+    <img src="/logo.png" alt="Logo" width="30" height="30" class="d-inline-block align-text-top">
+    PhakebukVIP
+  </a>
+  <div class="ms-auto d-flex align-items-center">
+    <span class="text-white me-3">Xin chào, <strong th:text="${user.fullName}">User</strong></span>
+    <a class="btn btn-outline-light me-2" href="/post_form">✍️ Viết bài</a>
+    <form action="/search" method="get" class="d-flex me-2">
+      <input class="form-control form-control-sm" type="text" name="q" placeholder="Tìm kiếm...">
+    </form>
+    <a href="/logout" class="btn btn-danger btn-sm">Đăng xuất</a>
+  </div>
+</nav>
+
+<div class="container-fluid mt-4">
+  <div class="row">
+
+    <!-- CỘT TRÁI -->
+    <div class="col-md-8">
+      <!-- Form đăng bài -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <form action="/post/create" method="post" enctype="multipart/form-data">
+            <div class="mb-2">
+              <textarea name="content" class="form-control" placeholder="Bạn đang nghĩ gì?" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Đăng bài</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Danh sách bài viết -->
+      <div th:each="post : ${posts}" th:attr="id='post-' + ${post.id}" class="card mb-4">
+        <div class="card-body">
+          <h5 th:text="${post.user.fullName}">Tên người đăng</h5>
+          <p th:text="${post.content}">Nội dung bài viết</p>
+
+          <!-- Ảnh -->
+          <img th:if="${post.imageUrl != null}" th:src="@{${post.imageUrl}}" class="img-fluid rounded mb-2" alt="Ảnh bài viết">
+
+          <!-- Video -->
+          <video th:if="${post.videoUrl != null}" width="100%" controls class="mb-2">
+            <source th:src="@{${post.videoUrl}}" type="video/mp4">
+            Trình duyệt không hỗ trợ video.
+          </video>
+
+          <p class="text-muted"><small th:text="${post.formattedDate}">Ngày đăng</small></p>
+          <p><strong th:text="${post.likes.size()}">0</strong> lượt thích</p>
+
+          <!-- Thay thế form bằng nút Like -->
+          <button class="btn btn-outline-primary btn-sm btn-like" th:attr="data-post-id=${post.id}">👍 Thích</button>
+
+
+          <!-- Bình luận -->
+          <h6 class="mt-3">Bình luận:</h6>
+          <ul class="list-unstyled">
+            <li th:each="comment : ${post.comments}" class="mb-1">
+              <b th:text="${comment.user.fullName}">Tên</b>: <span th:text="${comment.content}">Nội dung</span>
+            </li>
+          </ul>
+          <form th:action="@{'/post/' + ${post.id} + '/comment'}" method="post" class="d-flex mt-2">
+            <input type="text" name="content" class="form-control form-control-sm me-2" placeholder="Viết bình luận..." required>
+            <button type="submit" class="btn btn-secondary btn-sm">💬</button>
+          </form>
+
+          <!-- Chỉnh sửa / Xoá -->
+          <div th:if="${post.user.username == user.username}" class="mt-3">
+            <a th:href="@{'/post/edit/' + ${post.id}}" class="btn btn-warning btn-sm me-2">Chỉnh sửa</a>
+            <form th:action="@{'/post/delete/' + ${post.id}}" method="post" style="display:inline;"
+                  onsubmit="return confirm('Bạn có chắc chắn muốn xoá bài viết này?');">
+              <button type="submit" class="btn btn-danger btn-sm">Xoá</button>
+            </form>
+          </div>
+
+          <p class="mt-2">Tác giả: <a th:href="@{'/profile/' + ${post.user.username}}" th:text="${post.user.fullName}">Tên</a></p>
+
+          <!-- Follow/Unfollow -->
+          <div th:if="${post.user.username != user.username}">
+            <form th:action="@{'/follow/' + ${post.user.username}}" method="post"
+                  th:if="${!followedUsernames.contains(post.user.username)}">
+              <button type="submit" class="btn btn-outline-success btn-sm">➕ Theo dõi</button>
+            </form>
+            <form th:action="@{'/unfollow/' + ${post.user.username}}" method="post"
+                  th:if="${followedUsernames.contains(post.user.username)}">
+              <button type="submit" class="btn btn-outline-secondary btn-sm">✔️ Đang theo dõi</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CỘT PHẢI -->
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header bg-info text-white">🗨️ Bạn đang theo dõi</div>
+        <ul class="list-group list-group-flush">
+          <li th:each="u : ${followedUsers}" class="list-group-item d-flex justify-content-between align-items-center">
+            <span th:text="${u.fullName}">Tên người dùng</span>
+            <a th:href="@{'/chat/' + ${u.username}}" class="btn btn-outline-secondary btn-sm">💬 Nhắn tin</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nút chat nổi -->
+  <button onclick="toggleChatBox()" class="btn btn-light rounded-circle shadow border"
+          style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; z-index: 9999; padding: 5px;">
+    <img src="/messenger.png" alt="Chat" style="width: 100%; height: 100%; object-fit: contain;">
+  </button>
+
+  <!-- Khung chat -->
+  <div id="chatBoxPopup" class="card shadow" style="position: fixed; bottom: 90px; right: 20px; width: 300px; display: none; z-index: 9999;">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <span>Chat</span>
+      <button onclick="toggleChatBox()" class="btn btn-sm btn-light">×</button>
+    </div>
+    <div class="card-body" style="height: 250px; overflow-y: auto;">
+      <p>💡 Chọn người trong danh sách bên phải để nhắn tin.</p>
+      <p>Hoặc vào <a href="/chat/test">trang chat</a> để thử.</p>
+    </div>
+  </div>
+
+  <script>
+    function toggleChatBox() {
+      const box = document.getElementById('chatBoxPopup');
+      box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
+
+  </script>
+  <script>
+    document.querySelectorAll(".btn-like").forEach(button => {
+      button.addEventListener("click", function () {
+        const postId = this.getAttribute("data-post-id");
+
+        fetch(`/post/${postId}/like`, {
+          method: "POST"
+        })
+                .then(response => {
+                  if (response.ok) {
+                    location.reload(); // Hoặc chỉ cập nhật số lượt thích bằng JS nếu muốn
+                  } else {
+                    alert("Có lỗi xảy ra khi like.");
+                  }
+                });
+      });
+    });
+  </script>
+
+</div>
+</body>
+</html>
